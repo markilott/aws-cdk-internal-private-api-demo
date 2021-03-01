@@ -1,0 +1,16 @@
+{
+    "vpcAttr": {
+        "vpcId": "",
+        "subnetCidr1": "172.31.128.0/20",
+        "subnetCidr2": "172.31.144.0/20"
+    },
+    "createCertificate": true,
+    "certificateArn": "",
+    "dnsAttr": {
+        "zoneName": "mydomain.com",
+        "hostedZoneId": ""
+    },
+    "albHostname": "alb-test",
+    "apiPath1": "test-api1",
+    "apiPath2": "test-api2"
+}
