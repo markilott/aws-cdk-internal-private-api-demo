@@ -21,7 +21,7 @@ You can deploy the stacks using CDK Deploy.
 ## Requirements
 
 - Route53 domain
-- You will need VPN (or Direct Connect) access to your account to test the API's after deployment.
+- You will need a VPN (or Direct Connect), or a bastion/jumpbox to access to your account to test the API's after deployment.
 - The demo uses the AWS default VPC by default, but you can also use your own.
 
 &nbsp;
@@ -61,7 +61,7 @@ Note we are using Lookups for the VPC here. You will need to be authenticated to
 
 ## Testing and Updating
 
-You will need access over VPN or DX to test the ALB and APIs, as they are internal.
+You will need access over VPN/DX or bastion/jumpbox to test the ALB and APIs, as they are internal.
 
 The stacks will output the URL's for the API's and ALB. The API outputs a request id if succesful or 404 if there's something wrong.
 
