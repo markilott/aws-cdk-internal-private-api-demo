@@ -1,6 +1,6 @@
 {
     "vpcAttr": {
-        "vpcId": "",
+        "customVpcId": "",
         "subnetCidr1": "172.31.128.0/20",
         "subnetCidr2": "172.31.144.0/20"
     },
