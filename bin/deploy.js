@@ -6,7 +6,7 @@
  */
 
 /* eslint-disable no-new */
-const cdk = require('@aws-cdk/core');
+const { App } = require('aws-cdk-lib');
 const { AplicationStack, VpcStack } = require('../lib/application/application-stack');
 const options = require('../lib/application/options.json');
 
@@ -17,7 +17,7 @@ if (!vpcAttr.subnetCidr1 || !vpcAttr.subnetCidr2) { throw new Error('We need bot
 if (!dnsAttr.hostedZoneId || !dnsAttr.zoneName) { throw new Error('We need both the DNS zone name (domain name) and the Zone Id from Route53'); }
 if (!options.albHostname || !options.apiPath1 || !options.apiPath2 || options.apiPath1 === options.apiPath2) { throw new Error('We need the ALB hostname and the api paths. API paths must be unique'); }
 
-const app = new cdk.App();
+const app = new App();
 
 // use account details from default AWS CLI credentials:
 const account = process.env.CDK_DEFAULT_ACCOUNT;
