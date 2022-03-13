@@ -1,21 +1,44 @@
 /* eslint-disable max-classes-per-file */
 /* eslint-disable no-new */
 
-const {
-    Stack, Duration, CfnOutput, Tags,
-} = require('aws-cdk-lib');
-const apigw = require('aws-cdk-lib').aws_apigateway;
-const lambda = require('aws-cdk-lib').aws_lambda;
-const ec2 = require('aws-cdk-lib').aws_ec2;
-const route53 = require('aws-cdk-lib').aws_route53;
-const targets = require('aws-cdk-lib').aws_route53_targets;
-const acm = require('aws-cdk-lib').aws_certificatemanager;
-const elb = require('aws-cdk-lib').aws_elasticloadbalancingv2;
-const { IpTarget } = require('aws-cdk-lib').aws_elasticloadbalancingv2_targets;
-const iam = require('aws-cdk-lib').aws_iam;
-const { AwsCustomResource, AwsCustomResourcePolicy } = require('aws-cdk-lib').custom_resources;
+import {
+    Stack, StackProps, Duration, CfnOutput, Tags,
+} from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import {
+    DomainName, RestApi, LambdaIntegration, BasePathMapping, SecurityPolicy, EndpointType,
+    JsonSchemaVersion, JsonSchemaType,
+} from 'aws-cdk-lib/aws-apigateway';
+import { Function, Runtime, Code } from 'aws-cdk-lib/aws-lambda';
+import {
+    Vpc, SecurityGroup, CfnRouteTable, CfnSubnet, CfnSubnetRouteTableAssociation,
+    CfnVPCEndpoint, Subnet, InterfaceVpcEndpoint, Peer, Port,
+} from 'aws-cdk-lib/aws-ec2';
+import { HostedZone, ARecord, RecordTarget } from 'aws-cdk-lib/aws-route53';
+import { LoadBalancerTarget } from 'aws-cdk-lib/aws-route53-targets';
+import { Certificate, CertificateValidation } from 'aws-cdk-lib/aws-certificatemanager';
+import {
+    ApplicationLoadBalancer, ApplicationProtocol, ApplicationTargetGroup, TargetType,
+    ListenerAction, ListenerCondition,
+} from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { IpTarget } from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
+import {
+    PolicyDocument, PolicyStatement, AnyPrincipal, Effect,
+} from 'aws-cdk-lib/aws-iam';
+import { AwsCustomResource, AwsCustomResourcePolicy } from 'aws-cdk-lib/custom-resources';
+import { options } from './options';
 
-class VpcStack extends Stack {
+export class VpcStack extends Stack {
+    vpcId: string;
+
+    subnetId1: string;
+
+    subnetId2: string;
+
+    vpcEndpointId: string;
+
+    endpointIpAddresses: string[];
+
     /**
      * Deploys the VPC API Endpoint into two new subnets.
      *
@@ -23,37 +46,37 @@ class VpcStack extends Stack {
      * retrieve the IP Addresses of the API Endpoint for use
      * in the Application stack.
      *
-     * @param {cdk.Construct} scope
+     * @param {Construct} scope
      * @param {string} id
-     * @param {cdk.StackProps=} props
+     * @param {StackProps=} props
      */
-    constructor(scope, id, props) {
+    constructor(scope: Construct, id: string, props: StackProps | undefined) {
         super(scope, id, props);
 
-        const { vpcAttr } = props.options;
+        const { vpcAttr } = options;
         const { customVpcId, subnetCidr1, subnetCidr2 } = vpcAttr;
 
         // Check that the default subnets have been updated if we are using a custom VPC
         if (customVpcId && (subnetCidr1.includes('172.31.') || subnetCidr2.includes('172.31.'))) { throw new Error('Update the subnet CIDR Ranges in options if you are using a custom VPC'); }
 
         // Use an existing VPC if specified in options, or the default VPC if not
-        const vpc = (customVpcId) ? ec2.Vpc.fromLookup(this, 'vpc', { vpcId: customVpcId }) : ec2.Vpc.fromLookup(this, 'vpc', { isDefault: true });
+        const vpc = (customVpcId) ? Vpc.fromLookup(this, 'vpc', { vpcId: customVpcId }) : Vpc.fromLookup(this, 'vpc', { isDefault: true });
         const { vpcId, vpcCidrBlock, availabilityZones } = vpc;
         this.vpcId = vpcId;
 
         // security group for endpoint
-        const apiEndPointSg = new ec2.SecurityGroup(this, 'ApiEndpointSg', {
+        const apiEndPointSg = new SecurityGroup(this, 'ApiEndpointSg', {
             description: 'Internal API Endpoint SG',
             vpc,
             allowAllOutbound: true,
         });
-        apiEndPointSg.addIngressRule(ec2.Peer.ipv4(vpcCidrBlock), ec2.Port.tcp(443), 'allow internal Endpoint access');
+        apiEndPointSg.addIngressRule(Peer.ipv4(vpcCidrBlock), Port.tcp(443), 'allow internal Endpoint access');
 
         // Using level1 Cfn constructs rather than L2 CDK as they are more flexible for custom VPC components
 
         // create two new private subnets for the API and ALB
-        const routeTable = new ec2.CfnRouteTable(this, 'routeTable', { vpcId });
-        const subnet1 = new ec2.CfnSubnet(this, 'subnet1', {
+        const routeTable = new CfnRouteTable(this, 'routeTable', { vpcId });
+        const subnet1 = new CfnSubnet(this, 'subnet1', {
             cidrBlock: subnetCidr1,
             vpcId,
             mapPublicIpOnLaunch: false,
@@ -61,11 +84,11 @@ class VpcStack extends Stack {
         });
         Tags.of(subnet1).add('Name', 'albDemoSubnet1');
         this.subnetId1 = subnet1.ref;
-        new ec2.CfnSubnetRouteTableAssociation(this, 'assoc1', {
+        new CfnSubnetRouteTableAssociation(this, 'assoc1', {
             routeTableId: routeTable.ref,
             subnetId: subnet1.ref,
         });
-        const subnet2 = new ec2.CfnSubnet(this, 'subnet2', {
+        const subnet2 = new CfnSubnet(this, 'subnet2', {
             cidrBlock: subnetCidr2,
             vpcId,
             mapPublicIpOnLaunch: false,
@@ -73,13 +96,13 @@ class VpcStack extends Stack {
         });
         Tags.of(subnet2).add('Name', 'albDemoSubnet2');
         this.subnetId2 = subnet2.ref;
-        new ec2.CfnSubnetRouteTableAssociation(this, 'assoc2', {
+        new CfnSubnetRouteTableAssociation(this, 'assoc2', {
             routeTableId: routeTable.ref,
             subnetId: subnet2.ref,
         });
 
         // the API Endpoint. Will attach to the two new subnets
-        const apiEndpoint = new ec2.CfnVPCEndpoint(this, 'apiEndpoint', {
+        const apiEndpoint = new CfnVPCEndpoint(this, 'apiEndpoint', {
             vpcId,
             serviceName: `com.amazonaws.${this.region}.execute-api`,
             privateDnsEnabled: true,
@@ -128,7 +151,15 @@ class VpcStack extends Stack {
     }
 }
 
-class AplicationStack extends Stack {
+interface AplicationStackProps extends StackProps {
+    vpcId: string,
+    subnetId1: string,
+    subnetId2: string,
+    vpcEndpointId: string,
+    endpointIpAddresses: string[],
+}
+
+export class AplicationStack extends Stack {
     /**
      * Deploys two simple API's with Lambda function and GET method.
      * API Url is output for use in testing.
@@ -136,29 +167,30 @@ class AplicationStack extends Stack {
      * The ALB sits in front of the API's and includes a custom hostname
      * configured in Route53.
      *
-     * @param {cdk.Construct} scope
+     * @param {Construct} scope
      * @param {string} id
-     * @param {cdk.StackProps=} props
+     * @param {StackProps=} props
+     *
      */
-    constructor(scope, id, props) {
+    constructor(scope: Construct, id: string, props: AplicationStackProps) {
         super(scope, id, props);
 
         const {
-            options, vpcId, subnetId1, subnetId2, vpcEndpointId, endpointIpAddresses,
+            vpcId, subnetId1, subnetId2, vpcEndpointId, endpointIpAddresses,
         } = props;
         const {
-            dnsAttr, createCertificate, albHostname, apiPath1, apiPath2,
+            dnsAttr, createCertificate, albHostname, apiPath1, apiPath2, certificateArn,
         } = options;
 
         // Setup VPC, DNS and Certificate ==================================================================================================
 
         // VPC - from the VPC stack
-        const vpc = ec2.Vpc.fromLookup(this, 'vpc', { vpcId });
-        const subnet1 = ec2.Subnet.fromSubnetId(this, 'subnet1', subnetId1);
-        const subnet2 = ec2.Subnet.fromSubnetId(this, 'subnet2', subnetId2);
+        const vpc = Vpc.fromLookup(this, 'vpc', { vpcId });
+        const subnet1 = Subnet.fromSubnetId(this, 'subnet1', subnetId1);
+        const subnet2 = Subnet.fromSubnetId(this, 'subnet2', subnetId2);
 
         // DNS Zone
-        const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'zone', dnsAttr);
+        const zone = HostedZone.fromHostedZoneAttributes(this, 'zone', dnsAttr);
         const { zoneName } = zone;
 
         // host and domain for the ALB URL
@@ -166,23 +198,20 @@ class AplicationStack extends Stack {
 
         // Certificate
         // Creating a certificate will try to create auth records in the Route53 DNS zone.
-        let certificate = {};
-        if (createCertificate) {
-            certificate = new acm.Certificate(this, 'cert', {
+        const certificate = (createCertificate && certificateArn)
+            ? Certificate.fromCertificateArn(this, 'cert', certificateArn)
+            : new Certificate(this, 'cert', {
                 domainName: `*.${zoneName}`,
-                validation: acm.CertificateValidation.fromDns(zone),
+                validation: CertificateValidation.fromDns(zone),
             });
-        } else {
-            certificate = acm.Certificate.fromCertificateArn(this, 'cert', options.certificateArn);
-        }
 
         // API VPC Endpoint
-        const apiEndpoint = ec2.InterfaceVpcEndpoint.fromInterfaceVpcEndpointAttributes(this, 'apiEndpoint', { port: 443, vpcEndpointId });
+        const apiEndpoint = InterfaceVpcEndpoint.fromInterfaceVpcEndpointAttributes(this, 'apiEndpoint', { port: 443, vpcEndpointId });
 
         // Lambda function =================================================================================================================
-        const lambdaFnc = new lambda.Function(this, 'lambdaFnc', {
+        const lambdaFnc = new Function(this, 'lambdaFnc', {
             functionName: 'albTestFnc',
-            code: lambda.Code.fromInline(
+            code: Code.fromInline(
                 `exports.handler = async (event) => {
                     /**
                      * Basic API response function.
@@ -195,48 +224,62 @@ class AplicationStack extends Stack {
                     };
                 };`,
             ),
-            runtime: lambda.Runtime.NODEJS_14_X,
+            runtime: Runtime.NODEJS_14_X,
             handler: 'index.handler',
         });
 
         // API =============================================================================================================================
 
         // API IAM Policy
-        const defApiPolicy = new iam.PolicyDocument({
+        const defApiPolicy = new PolicyDocument({
             // allow access to API only from the internal VPC endpoint
             statements: [
-                new iam.PolicyStatement({
-                    principals: [new iam.AnyPrincipal()],
+                new PolicyStatement({
+                    principals: [new AnyPrincipal()],
                     actions: ['execute-api:Invoke'],
                     resources: ['execute-api:/*'],
-                    effect: iam.Effect.DENY,
+                    effect: Effect.DENY,
                     conditions: {
                         StringNotEquals: {
                             'aws:SourceVpce': vpcEndpointId,
                         },
                     },
                 }),
-                new iam.PolicyStatement({
-                    principals: [new iam.AnyPrincipal()],
+                new PolicyStatement({
+                    principals: [new AnyPrincipal()],
                     actions: ['execute-api:Invoke'],
                     resources: ['execute-api:/*'],
-                    effect: iam.Effect.ALLOW,
+                    effect: Effect.ALLOW,
                 }),
             ],
         });
 
         // Create the API domain
-        const apiDomain = new apigw.DomainName(this, 'apiDomain', {
+        const apiDomain = new DomainName(this, 'apiDomain', {
             domainName: albDomainName,
             certificate,
-            endpointType: apigw.EndpointType.REGIONAL, // API domains can only be created for Regional endpoints, but it will work with the Private endpoint anyway
-            securityPolicy: apigw.SecurityPolicy.TLS_1_2,
+            endpointType: EndpointType.REGIONAL, // API domains can only be created for Regional endpoints, but it will work with the Private endpoint anyway
+            securityPolicy: SecurityPolicy.TLS_1_2,
         });
+
+        // Model for the integration Method Responses
+        const responseModelProps = {
+            contentType: 'application/json',
+            schema: {
+                schema: JsonSchemaVersion.DRAFT7,
+                title: 'JsonResponse',
+                type: JsonSchemaType.OBJECT,
+                properties: {
+                    state: { type: JsonSchemaType.STRING },
+                    greeting: { type: JsonSchemaType.STRING },
+                },
+            },
+        };
 
         // API 1 ===========
 
         // Create API and deployment stage
-        const api1 = new apigw.RestApi(this, 'albTestApi1', {
+        const api1 = new RestApi(this, 'albTestApi1', {
             restApiName: 'albTestApi1',
             description: 'The ALB Test Api1',
             deployOptions: {
@@ -244,14 +287,15 @@ class AplicationStack extends Stack {
                 description: 'V1 Deployment',
             },
             endpointConfiguration: {
-                types: [apigw.EndpointType.PRIVATE],
+                types: [EndpointType.PRIVATE],
                 vpcEndpoints: [apiEndpoint],
             },
             policy: defApiPolicy,
         });
+        const jsonResponseModel1 = api1.addModel('jsonResponse1', responseModelProps);
 
         // map API domain name to API
-        new apigw.BasePathMapping(this, 'pathMapping1', {
+        new BasePathMapping(this, 'pathMapping1', {
             basePath: apiPath1,
             domainName: apiDomain,
             restApi: api1,
@@ -266,7 +310,7 @@ class AplicationStack extends Stack {
         });
 
         // Lambda integration for API method
-        const lambdaInteg1 = new apigw.LambdaIntegration(lambdaFnc, {
+        const lambdaInteg1 = new LambdaIntegration(lambdaFnc, {
             proxy: false,
             requestTemplates: {
                 'application/json': `{
@@ -288,7 +332,7 @@ class AplicationStack extends Stack {
             methodResponses: [{
                 statusCode: '200',
                 responseModels: {
-                    'application/json': '$input.body',
+                    'application/json': jsonResponseModel1,
                 },
             }],
         });
@@ -296,7 +340,7 @@ class AplicationStack extends Stack {
         // API 2 ===========
 
         // Create API and deployment stage
-        const api2 = new apigw.RestApi(this, 'albTestApi2', {
+        const api2 = new RestApi(this, 'albTestApi2', {
             restApiName: 'albTestApi2',
             description: 'The ALB Test Api2',
             deployOptions: {
@@ -304,14 +348,15 @@ class AplicationStack extends Stack {
                 description: 'V1 Deployment',
             },
             endpointConfiguration: {
-                types: [apigw.EndpointType.PRIVATE],
+                types: [EndpointType.PRIVATE],
                 vpcEndpoints: [apiEndpoint],
             },
             policy: defApiPolicy,
         });
+        const jsonResponseModel2 = api2.addModel('jsonResponse2', responseModelProps);
 
         // map API domain name to API
-        new apigw.BasePathMapping(this, 'pathMapping2', {
+        new BasePathMapping(this, 'pathMapping2', {
             basePath: apiPath2,
             domainName: apiDomain,
             restApi: api2,
@@ -326,7 +371,7 @@ class AplicationStack extends Stack {
         });
 
         // Lambda integration for API method
-        const lambdaInteg2 = new apigw.LambdaIntegration(lambdaFnc, {
+        const lambdaInteg2 = new LambdaIntegration(lambdaFnc, {
             proxy: false,
             requestTemplates: {
                 'application/json': `{
@@ -348,7 +393,7 @@ class AplicationStack extends Stack {
             methodResponses: [{
                 statusCode: '200',
                 responseModels: {
-                    'application/json': '$input.body',
+                    'application/json': jsonResponseModel2,
                 },
             }],
         });
@@ -356,16 +401,16 @@ class AplicationStack extends Stack {
         // ALB =============================================================================================================================
 
         // security group
-        const albSg = new ec2.SecurityGroup(this, 'albSg', {
+        const albSg = new SecurityGroup(this, 'albSg', {
             description: 'ALB Endpoint SG',
             vpc,
             allowAllOutbound: true,
         });
-        albSg.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(443), 'allow internal ALB access');
-        albSg.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(80), 'allow internal ALB access');
+        albSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(443), 'allow internal ALB access');
+        albSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(80), 'allow internal ALB access');
 
         // load balancer base
-        const alb = new elb.ApplicationLoadBalancer(this, 'alb', {
+        const alb = new ApplicationLoadBalancer(this, 'alb', {
             vpc,
             vpcSubnets: {
                 subnets: [subnet1, subnet2],
@@ -377,56 +422,54 @@ class AplicationStack extends Stack {
         // listeners
         const https = alb.addListener('https', {
             port: 443,
-            protocol: elb.ApplicationProtocol.HTTPS,
+            protocol: ApplicationProtocol.HTTPS,
             certificates: [certificate],
         });
         // addRedirect will create a HTTP listener and redirect to HTTPS
         alb.addRedirect({
-            sourceProtocol: elb.ApplicationProtocol.HTTP,
+            sourceProtocol: ApplicationProtocol.HTTP,
             sourcePort: 80,
-            targetProtocol: elb.ApplicationProtocol.HTTPS,
+            targetProtocol: ApplicationProtocol.HTTPS,
             targetPort: 443,
         });
 
         // DNS alias for ALB
-        new route53.ARecord(this, 'albAlias', {
+        new ARecord(this, 'albAlias', {
             recordName: albDomainName,
             zone,
             comment: 'Alias for API ALB Demo',
-            target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(alb)),
+            target: RecordTarget.fromAlias(new LoadBalancerTarget(alb)),
         });
 
         // add targets
         const ipTargets = endpointIpAddresses.map((ip) => new IpTarget(ip));
-        const apiTargetGroup = new elb.ApplicationTargetGroup(this, 'apiEndpointGroup', {
+        const apiTargetGroup = new ApplicationTargetGroup(this, 'apiEndpointGroup', {
             targetGroupName: 'ApiEndpoints',
             port: 443,
-            protocol: elb.ApplicationProtocol.HTTPS,
+            protocol: ApplicationProtocol.HTTPS,
             healthCheck: {
                 path: '/',
                 interval: Duration.minutes(5),
                 healthyHttpCodes: '200-202,400-404',
             },
-            targetType: elb.TargetType.IP,
+            targetType: TargetType.IP,
             targets: ipTargets,
             vpc,
         });
 
         // add routing actions. Send a 404 response if the request does not match one of our API paths
         https.addAction('default', {
-            action: elb.ListenerAction.fixedResponse(404, {
+            action: ListenerAction.fixedResponse(404, {
                 contentType: 'text/plain',
                 messageBody: 'Nothing to see here',
             }),
         });
         https.addAction('apis', {
-            action: elb.ListenerAction.forward([apiTargetGroup]),
+            action: ListenerAction.forward([apiTargetGroup]),
             conditions: [
-                elb.ListenerCondition.pathPatterns([`/${apiPath1}`, `/${apiPath2}`]),
+                ListenerCondition.pathPatterns([`/${apiPath1}`, `/${apiPath2}`]),
             ],
             priority: 1,
         });
     }
 }
-
-module.exports = { VpcStack, AplicationStack };

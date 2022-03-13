@@ -1,6 +1,6 @@
 # AWS CDK Private API and Application Load Balancer Demo
 
-This Javascript CDK project creates two private API Gateways with Lambda integrations, fronted by an ALB.
+This Typescript CDK project creates two private API Gateways with Lambda integrations, fronted by an ALB.
 
 <img src="lib/assets/alb-api.jpg" width="1000">
 
@@ -33,7 +33,7 @@ Assuming you have the AWS CLI and CDK installed and configured already...
 Setup the project:
 - Clone the repo
 - run `npm install`
-- Update the `lib/application/options.json` file with your own environment details and preferences
+- Update the `lib/application/options.ts` file with your own environment details and preferences
 
 &nbsp;
 
