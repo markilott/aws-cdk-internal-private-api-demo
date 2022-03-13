@@ -6,9 +6,10 @@
  */
 
 /* eslint-disable no-new */
-const { App } = require('aws-cdk-lib');
-const { AplicationStack, VpcStack } = require('../lib/application/application-stack');
-const options = require('../lib/application/options.json');
+import 'source-map-support/register';
+import { App } from 'aws-cdk-lib';
+import { ApplicationStack, VpcStack } from '../lib/application/application-stack';
+import { options } from '../lib/application/options';
 
 // validate options
 const { vpcAttr, dnsAttr } = options;
@@ -27,14 +28,13 @@ const region = process.env.CDK_DEFAULT_REGION;
 const vpcStack = new VpcStack(app, 'AlbVpcDemoStack', {
     description: 'ALB VPC Demo Stack',
     env: { account, region },
-    options,
 });
 const {
     subnetId1, subnetId2, vpcId, vpcEndpointId, endpointIpAddresses,
 } = vpcStack;
 
 // Create API and ALB resource stack
-new AplicationStack(app, 'AlbApiDemoStack', {
+new ApplicationStack(app, 'AlbApiDemoStack', {
     description: 'ALB API Demo Stack',
     env: { account, region },
     vpcId,
@@ -42,5 +42,4 @@ new AplicationStack(app, 'AlbApiDemoStack', {
     subnetId2,
     vpcEndpointId,
     endpointIpAddresses,
-    options,
 });
