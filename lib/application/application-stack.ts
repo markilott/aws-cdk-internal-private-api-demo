@@ -151,7 +151,7 @@ export class VpcStack extends Stack {
     }
 }
 
-interface AplicationStackProps extends StackProps {
+interface ApplicationStackProps extends StackProps {
     vpcId: string,
     subnetId1: string,
     subnetId2: string,
@@ -159,7 +159,7 @@ interface AplicationStackProps extends StackProps {
     endpointIpAddresses: string[],
 }
 
-export class AplicationStack extends Stack {
+export class ApplicationStack extends Stack {
     /**
      * Deploys two simple API's with Lambda function and GET method.
      * API Url is output for use in testing.
@@ -172,7 +172,7 @@ export class AplicationStack extends Stack {
      * @param {StackProps=} props
      *
      */
-    constructor(scope: Construct, id: string, props: AplicationStackProps) {
+    constructor(scope: Construct, id: string, props: ApplicationStackProps) {
         super(scope, id, props);
 
         const {

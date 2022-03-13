@@ -8,7 +8,7 @@
 /* eslint-disable no-new */
 import 'source-map-support/register';
 import { App } from 'aws-cdk-lib';
-import { AplicationStack, VpcStack } from '../lib/application/application-stack';
+import { ApplicationStack, VpcStack } from '../lib/application/application-stack';
 import { options } from '../lib/application/options';
 
 // validate options
@@ -34,7 +34,7 @@ const {
 } = vpcStack;
 
 // Create API and ALB resource stack
-new AplicationStack(app, 'AlbApiDemoStack', {
+new ApplicationStack(app, 'AlbApiDemoStack', {
     description: 'ALB API Demo Stack',
     env: { account, region },
     vpcId,
