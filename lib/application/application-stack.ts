@@ -26,7 +26,7 @@ import {
     PolicyDocument, PolicyStatement, AnyPrincipal, Effect,
 } from 'aws-cdk-lib/aws-iam';
 import { AwsCustomResource, AwsCustomResourcePolicy } from 'aws-cdk-lib/custom-resources';
-import { options } from './options';
+import { options } from '../../config';
 
 export class VpcStack extends Stack {
     vpcId: string;

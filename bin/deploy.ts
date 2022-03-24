@@ -9,7 +9,7 @@
 import 'source-map-support/register';
 import { App } from 'aws-cdk-lib';
 import { ApplicationStack, VpcStack } from '../lib/application/application-stack';
-import { options } from '../lib/application/options';
+import { options } from '../config';
 
 // validate options
 const { vpcAttr, dnsAttr } = options;

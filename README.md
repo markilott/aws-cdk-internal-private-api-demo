@@ -33,7 +33,7 @@ Assuming you have the AWS CLI and CDK installed and configured already...
 Setup the project:
 - Clone the repo
 - run `npm install`
-- Update the `lib/application/options.ts` file with your own environment details and preferences
+- Update the `config/index.ts` file with your own environment details and preferences
 
 &nbsp;
 
