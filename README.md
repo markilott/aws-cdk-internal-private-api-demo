@@ -20,7 +20,7 @@ You can deploy the stacks using CDK Deploy.
 
 ## Requirements
 
-- Route53 domain
+- Route53 domain (note you can use a public or private domain)
 - You will need a VPN (or Direct Connect), or a bastion/jumpbox to access to your account to test the API's after deployment.
 - The demo uses the AWS default VPC by default, but you can also use your own.
 
@@ -39,13 +39,13 @@ Setup the project:
 
 ## Options
 
-- vpcId - leave blank to use the default VPC, or enter your own VPC Id. If you enter your own you will also need to update the CIDR ranges.
-- subnetCidr1 and 2 (required) - we create two new subnets for the demo. The defaults are in the default VPC. If you want to use your own VPC you will need to update with valid ranges.
-- createCertificate - we can create a new certificate for the ALB, or you can use an existing certificate. If we are creating one your Route53 zone must already include an auth record for ACM.
-- certificateArn (required if createCertificate is false) - if you use an existing certificate, it must be a wildcard certificate or match the hostname you will use for the ALB
-- dnsAttr (required) - the zone name (domain name) and zone id for your Route53 domain
-- albHostname (required) - the hostname for your ALB
-- apiPath1 and 2 (required) - path's used in API Gateway for the domain name mapping. Must be unique.
+- `vpcId` - leave blank to use the default VPC, or enter your own VPC Id. If you enter your own you will also need to update the CIDR ranges.
+- `subnetCidr1` and `subnetCidr2` (required) - we create two new subnets for the demo. The defaults are in the default VPC. If you want to use your own VPC you will need to update with valid ranges.
+- `createCertificate` - we can create a new certificate for the ALB, or you can use an existing certificate. If we are creating one your Route53 zone must already include an auth record for ACM.
+- `certificateArn` (required if `createCertificate` is false) - if you use an existing certificate, it must be a wildcard certificate or match the hostname you will use for the ALB
+- `dnsAttr` (required) - the zone name (domain name) and zone id for your Route53 domain
+- `albHostname` (required) - the hostname for your ALB
+- `apiPath1` and `apiPath2` (required) - path's used in API Gateway for the domain name mapping. Must be unique.
 
 &nbsp;
 
@@ -63,7 +63,7 @@ Note we are using Lookups for the VPC here. You will need to be authenticated to
 
 You will need access over VPN/DX or bastion/jumpbox to test the ALB and APIs, as they are internal.
 
-The stacks will output the URL's for the API's and ALB. The API outputs a request id if succesful or 404 if there's something wrong.
+The stacks will output the URL's for the API's and ALB. The API outputs a request id if successful or 404 if there's something wrong.
 
 &nbsp;
 

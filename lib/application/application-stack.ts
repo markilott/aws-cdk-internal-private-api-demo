@@ -1,6 +1,4 @@
 /* eslint-disable max-classes-per-file */
-/* eslint-disable no-new */
-
 import {
     Stack, StackProps, Duration, CfnOutput, Tags,
 } from 'aws-cdk-lib';
@@ -224,7 +222,7 @@ export class ApplicationStack extends Stack {
                     };
                 };`,
             ),
-            runtime: Runtime.NODEJS_14_X,
+            runtime: Runtime.NODEJS_16_X,
             handler: 'index.handler',
         });
 
