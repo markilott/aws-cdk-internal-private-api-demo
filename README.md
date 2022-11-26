@@ -2,7 +2,7 @@
 
 This Typescript CDK project creates two private API Gateways with Lambda integrations, fronted by an ALB.
 
-<img src="lib/assets/alb-api.jpg" width="1000">
+![API Gateway with Private DNS](docs/diagrams/priv-dns.drawio.svg)
 
 &nbsp;
 
