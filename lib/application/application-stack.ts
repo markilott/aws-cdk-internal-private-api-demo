@@ -26,133 +26,134 @@ import {
 import { AwsCustomResource, AwsCustomResourcePolicy } from 'aws-cdk-lib/custom-resources';
 import { options } from '../../config';
 
-export class VpcStack extends Stack {
-    vpcId: string;
+// export class VpcStack extends Stack {
+//     vpcId: string;
 
-    subnetId1: string;
+//     subnetId1: string;
 
-    subnetId2: string;
+//     subnetId2: string;
 
-    vpcEndpointId: string;
+//     vpcEndpointId: string;
 
-    endpointIpAddresses: string[];
+//     endpointIpAddresses: string[];
 
-    /**
-     * Deploys the VPC API Endpoint into two new subnets.
-     *
-     * Uses custom CloudFormation resources (Lambda) to
-     * retrieve the IP Addresses of the API Endpoint for use
-     * in the Application stack.
-     *
-     * @param {Construct} scope
-     * @param {string} id
-     * @param {StackProps=} props
-     */
-    constructor(scope: Construct, id: string, props: StackProps | undefined) {
-        super(scope, id, props);
+//     /**
+//      * Deploys the VPC API Endpoint into two new subnets.
+//      *
+//      * Uses custom CloudFormation resources (Lambda) to
+//      * retrieve the IP Addresses of the API Endpoint for use
+//      * in the Application stack.
+//      *
+//      * @param {Construct} scope
+//      * @param {string} id
+//      * @param {StackProps=} props
+//      */
+//     constructor(scope: Construct, id: string, props: StackProps | undefined) {
+//         super(scope, id, props);
 
-        const { vpcAttr } = options;
-        const { customVpcId, subnetCidr1, subnetCidr2 } = vpcAttr;
+//         const { vpcAttr } = options;
+//         const { customVpcId, subnetCidr1, subnetCidr2 } = vpcAttr;
 
-        // Check that the default subnets have been updated if we are using a custom VPC
-        if (customVpcId && (subnetCidr1.includes('172.31.') || subnetCidr2.includes('172.31.'))) { throw new Error('Update the subnet CIDR Ranges in options if you are using a custom VPC'); }
+//         // Check that the default subnets have been updated if we are using a custom VPC
+//         if (customVpcId && (subnetCidr1.includes('172.31.') || subnetCidr2.includes('172.31.'))) { throw new Error('Update the subnet CIDR Ranges in options if you are using a custom VPC'); }
 
-        // Use an existing VPC if specified in options, or the default VPC if not
-        const vpc = (customVpcId) ? Vpc.fromLookup(this, 'vpc', { vpcId: customVpcId }) : Vpc.fromLookup(this, 'vpc', { isDefault: true });
-        const { vpcId, vpcCidrBlock, availabilityZones } = vpc;
-        this.vpcId = vpcId;
+//         // Use an existing VPC if specified in options, or the default VPC if not
+//         const vpc = (customVpcId) ? Vpc.fromLookup(this, 'vpc', { vpcId: customVpcId }) : Vpc.fromLookup(this, 'vpc', { isDefault: true });
+//         const { vpcId, vpcCidrBlock, availabilityZones } = vpc;
+//         this.vpcId = vpcId;
 
-        // security group for endpoint
-        const apiEndPointSg = new SecurityGroup(this, 'ApiEndpointSg', {
-            description: 'Internal API Endpoint SG',
-            vpc,
-            allowAllOutbound: true,
-        });
-        apiEndPointSg.addIngressRule(Peer.ipv4(vpcCidrBlock), Port.tcp(443), 'allow internal Endpoint access');
+//         // security group for endpoint
+//         const apiEndPointSg = new SecurityGroup(this, 'ApiEndpointSg', {
+//             description: 'Internal API Endpoint SG',
+//             vpc,
+//             allowAllOutbound: true,
+//         });
+//         apiEndPointSg.addIngressRule(Peer.ipv4(vpcCidrBlock), Port.tcp(443), 'allow internal Endpoint access');
 
-        // Using level1 Cfn constructs rather than L2 CDK as they are more flexible for custom VPC components
+//         // Using level1 Cfn constructs rather than L2 CDK as they are more flexible for custom VPC components
 
-        // create two new private subnets for the API and ALB
-        const routeTable = new CfnRouteTable(this, 'routeTable', { vpcId });
-        const subnet1 = new CfnSubnet(this, 'subnet1', {
-            cidrBlock: subnetCidr1,
-            vpcId,
-            mapPublicIpOnLaunch: false,
-            availabilityZone: availabilityZones[0],
-        });
-        Tags.of(subnet1).add('Name', 'albDemoSubnet1');
-        this.subnetId1 = subnet1.ref;
-        new CfnSubnetRouteTableAssociation(this, 'assoc1', {
-            routeTableId: routeTable.ref,
-            subnetId: subnet1.ref,
-        });
-        const subnet2 = new CfnSubnet(this, 'subnet2', {
-            cidrBlock: subnetCidr2,
-            vpcId,
-            mapPublicIpOnLaunch: false,
-            availabilityZone: availabilityZones[1],
-        });
-        Tags.of(subnet2).add('Name', 'albDemoSubnet2');
-        this.subnetId2 = subnet2.ref;
-        new CfnSubnetRouteTableAssociation(this, 'assoc2', {
-            routeTableId: routeTable.ref,
-            subnetId: subnet2.ref,
-        });
+//         // create two new private subnets for the API and ALB
+//         const routeTable = new CfnRouteTable(this, 'routeTable', { vpcId });
+//         const subnet1 = new CfnSubnet(this, 'subnet1', {
+//             cidrBlock: subnetCidr1,
+//             vpcId,
+//             mapPublicIpOnLaunch: false,
+//             availabilityZone: availabilityZones[0],
+//         });
+//         Tags.of(subnet1).add('Name', 'albDemoSubnet1');
+//         this.subnetId1 = subnet1.ref;
+//         new CfnSubnetRouteTableAssociation(this, 'assoc1', {
+//             routeTableId: routeTable.ref,
+//             subnetId: subnet1.ref,
+//         });
+//         const subnet2 = new CfnSubnet(this, 'subnet2', {
+//             cidrBlock: subnetCidr2,
+//             vpcId,
+//             mapPublicIpOnLaunch: false,
+//             availabilityZone: availabilityZones[1],
+//         });
+//         Tags.of(subnet2).add('Name', 'albDemoSubnet2');
+//         this.subnetId2 = subnet2.ref;
+//         new CfnSubnetRouteTableAssociation(this, 'assoc2', {
+//             routeTableId: routeTable.ref,
+//             subnetId: subnet2.ref,
+//         });
 
-        // the API Endpoint. Will attach to the two new subnets
-        const apiEndpoint = new CfnVPCEndpoint(this, 'apiEndpoint', {
-            vpcId,
-            serviceName: `com.amazonaws.${this.region}.execute-api`,
-            privateDnsEnabled: true,
-            vpcEndpointType: 'Interface',
-            subnetIds: [subnet1.ref, subnet2.ref],
-            securityGroupIds: [apiEndPointSg.securityGroupId],
-        });
-        this.vpcEndpointId = apiEndpoint.ref;
-        new CfnOutput(this, 'apiEndpointId', {
-            description: 'API Endpoint Id',
-            value: apiEndpoint.ref,
-        });
+//         // the API Endpoint. Will attach to the two new subnets
+//         const apiEndpoint = new CfnVPCEndpoint(this, 'apiEndpoint', {
+//             vpcId,
+//             serviceName: `com.amazonaws.${this.region}.execute-api`,
+//             privateDnsEnabled: true,
+//             vpcEndpointType: 'Interface',
+//             subnetIds: [subnet1.ref, subnet2.ref],
+//             securityGroupIds: [apiEndPointSg.securityGroupId],
+//         });
+//         this.vpcEndpointId = apiEndpoint.ref;
+//         new CfnOutput(this, 'apiEndpointId', {
+//             description: 'API Endpoint Id',
+//             value: apiEndpoint.ref,
+//         });
 
-        // use CDK custom resources to get the Network Interfaces and IP addresses of the API Endpoint
-        const vpcEndpointProps = new AwsCustomResource(this, 'vpcEndpointProps', {
-            onUpdate: {
-                service: 'EC2',
-                action: 'describeVpcEndpoints',
-                parameters: {
-                    VpcEndpointIds: [apiEndpoint.ref],
-                },
-                physicalResourceId: {},
-            },
-            policy: AwsCustomResourcePolicy.fromSdkCalls({ resources: AwsCustomResourcePolicy.ANY_RESOURCE }),
-            logRetention: 7,
-        });
-        const networkInterfaceProps = new AwsCustomResource(this, 'networkInterfaceProps', {
-            onUpdate: {
-                service: 'EC2',
-                action: 'describeNetworkInterfaces',
-                parameters: {
-                    NetworkInterfaceIds: [
-                        vpcEndpointProps.getResponseField('VpcEndpoints.0.NetworkInterfaceIds.0'),
-                        vpcEndpointProps.getResponseField('VpcEndpoints.0.NetworkInterfaceIds.1'),
-                    ],
-                },
-                physicalResourceId: {},
-            },
-            policy: AwsCustomResourcePolicy.fromSdkCalls({ resources: AwsCustomResourcePolicy.ANY_RESOURCE }),
-            logRetention: 7,
-        });
-        this.endpointIpAddresses = [
-            networkInterfaceProps.getResponseField('NetworkInterfaces.0.PrivateIpAddress'),
-            networkInterfaceProps.getResponseField('NetworkInterfaces.1.PrivateIpAddress'),
-        ];
-    }
-}
+//         // use CDK custom resources to get the Network Interfaces and IP addresses of the API Endpoint
+//         const vpcEndpointProps = new AwsCustomResource(this, 'vpcEndpointProps', {
+//             onUpdate: {
+//                 service: 'EC2',
+//                 action: 'describeVpcEndpoints',
+//                 parameters: {
+//                     VpcEndpointIds: [apiEndpoint.ref],
+//                 },
+//                 physicalResourceId: {},
+//             },
+//             policy: AwsCustomResourcePolicy.fromSdkCalls({ resources: AwsCustomResourcePolicy.ANY_RESOURCE }),
+//             logRetention: 7,
+//         });
+//         const networkInterfaceProps = new AwsCustomResource(this, 'networkInterfaceProps', {
+//             onUpdate: {
+//                 service: 'EC2',
+//                 action: 'describeNetworkInterfaces',
+//                 parameters: {
+//                     NetworkInterfaceIds: [
+//                         vpcEndpointProps.getResponseField('VpcEndpoints.0.NetworkInterfaceIds.0'),
+//                         vpcEndpointProps.getResponseField('VpcEndpoints.0.NetworkInterfaceIds.1'),
+//                     ],
+//                 },
+//                 physicalResourceId: {},
+//             },
+//             policy: AwsCustomResourcePolicy.fromSdkCalls({ resources: AwsCustomResourcePolicy.ANY_RESOURCE }),
+//             logRetention: 7,
+//         });
+//         this.endpointIpAddresses = [
+//             networkInterfaceProps.getResponseField('NetworkInterfaces.0.PrivateIpAddress'),
+//             networkInterfaceProps.getResponseField('NetworkInterfaces.1.PrivateIpAddress'),
+//         ];
+//     }
+// }
 
 interface ApplicationStackProps extends StackProps {
     vpcId: string,
     subnetId1: string,
     subnetId2: string,
+    subnetId3: string,
     vpcEndpointId: string,
     endpointIpAddresses: string[],
 }
@@ -174,7 +175,7 @@ export class ApplicationStack extends Stack {
         super(scope, id, props);
 
         const {
-            vpcId, subnetId1, subnetId2, vpcEndpointId, endpointIpAddresses,
+            vpcId, subnetId1, subnetId2, subnetId3, vpcEndpointId, endpointIpAddresses,
         } = props;
         const {
             dnsAttr, createCertificate, albHostname, apiPath1, apiPath2, certificateArn,
@@ -186,6 +187,7 @@ export class ApplicationStack extends Stack {
         const vpc = Vpc.fromLookup(this, 'vpc', { vpcId });
         const subnet1 = Subnet.fromSubnetId(this, 'subnet1', subnetId1);
         const subnet2 = Subnet.fromSubnetId(this, 'subnet2', subnetId2);
+        const subnet3 = Subnet.fromSubnetId(this, 'subnet3', subnetId3);
 
         // DNS Zone
         const zone = HostedZone.fromHostedZoneAttributes(this, 'zone', dnsAttr);
@@ -219,6 +221,7 @@ export class ApplicationStack extends Stack {
                     console.log('Event: ', JSON.stringify(event));
                     return {
                         requestId: (event.context.requestId) || 'Missing requestId',
+                        heyaaa: 'goodbye'
                     };
                 };`,
             ),
@@ -411,7 +414,7 @@ export class ApplicationStack extends Stack {
         const alb = new ApplicationLoadBalancer(this, 'alb', {
             vpc,
             vpcSubnets: {
-                subnets: [subnet1, subnet2],
+                subnets: [subnet1, subnet2, subnet3],
             },
             internetFacing: false,
             securityGroup: albSg,
@@ -451,7 +454,7 @@ export class ApplicationStack extends Stack {
                 healthyHttpCodes: '200-202,400-404',
             },
             targetType: TargetType.IP,
-            targets: ipTargets,
+            // targets: ipTargets,
             vpc,
         });
 
@@ -471,3 +474,4 @@ export class ApplicationStack extends Stack {
         });
     }
 }
+
