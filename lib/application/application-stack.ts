@@ -1,4 +1,3 @@
-/* eslint-disable max-classes-per-file */
 import {
     Stack, StackProps, Duration, CfnOutput, Tags,
 } from 'aws-cdk-lib';
@@ -12,6 +11,7 @@ import {
     Vpc, SecurityGroup, CfnRouteTable, CfnSubnet, CfnSubnetRouteTableAssociation,
     CfnVPCEndpoint, Subnet, InterfaceVpcEndpoint, Peer, Port,
 } from 'aws-cdk-lib/aws-ec2';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { HostedZone, ARecord, RecordTarget } from 'aws-cdk-lib/aws-route53';
 import { LoadBalancerTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { Certificate, CertificateValidation } from 'aws-cdk-lib/aws-certificatemanager';
@@ -125,7 +125,9 @@ export class VpcStack extends Stack {
                 physicalResourceId: {},
             },
             policy: AwsCustomResourcePolicy.fromSdkCalls({ resources: AwsCustomResourcePolicy.ANY_RESOURCE }),
-            logRetention: 7,
+            logGroup: new LogGroup(this, 'vpcEndpointPropsLogs', {
+                retention: RetentionDays.ONE_WEEK,
+            }),
         });
         const networkInterfaceProps = new AwsCustomResource(this, 'networkInterfaceProps', {
             onUpdate: {
@@ -140,7 +142,9 @@ export class VpcStack extends Stack {
                 physicalResourceId: {},
             },
             policy: AwsCustomResourcePolicy.fromSdkCalls({ resources: AwsCustomResourcePolicy.ANY_RESOURCE }),
-            logRetention: 7,
+            logGroup: new LogGroup(this, 'networkInterfacePropsLogs', {
+                retention: RetentionDays.ONE_WEEK,
+            }),
         });
         this.endpointIpAddresses = [
             networkInterfaceProps.getResponseField('NetworkInterfaces.0.PrivateIpAddress'),
@@ -222,7 +226,7 @@ export class ApplicationStack extends Stack {
                     };
                 };`,
             ),
-            runtime: Runtime.NODEJS_16_X,
+            runtime: Runtime.NODEJS_24_X,
             handler: 'index.handler',
         });
 
